@@ -6,6 +6,8 @@ namespace App\Command;
 
 use App\GHArchive\Client\GHEventsFacade;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\ProgressBar;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -27,14 +29,25 @@ class ImportGitHubEventsCommand extends Command
     protected function configure(): void
     {
         $this
-            ->setDescription('Import GH events');
+            ->setDescription('Import GH events')
+            ->addArgument('date', InputArgument::REQUIRED, 'Date with format Y-m-d');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $output->writeln('Yeah');
-        $this->client->saveDailyEvents(new \DateTimeImmutable());
+        $date = $input->getArgument('date');
+        $dateTime = \DateTimeImmutable::createFromFormat('Y-m-d', $date);
 
+        $output->writeln("Start import for date $date");
+        $progressBar = new ProgressBar($output, 23);
+        $i = 0;
+        while ($i++ < 24) {
+            $this->client->saveHourlyEventsFromArchive($dateTime, $i);
+            $progressBar->advance();
+        }
+        $progressBar->finish();
+
+        $output->writeln('Import finished');
         return self::SUCCESS;
     }
 }

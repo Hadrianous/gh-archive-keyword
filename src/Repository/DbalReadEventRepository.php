@@ -20,7 +20,7 @@ class DbalReadEventRepository implements ReadEventRepository
         SELECT sum(count) as count
         FROM event
         WHERE date(create_at) = :date
-        --AND payload like %:keyword%
+        AND payload like %:keyword%
 SQL;
 
         return (int) $this->connection->fetchOne($sql, [
@@ -35,7 +35,7 @@ SQL;
             SELECT type, sum(count) as count
             FROM event
             WHERE date(create_at) = :date
-            --AND payload like %:keyword%
+            AND payload like %:keyword%
             GROUP BY type
 SQL;
 
@@ -76,7 +76,7 @@ SQL;
             FROM event
             JOIN repo ON event.repo_id = repo.id
             WHERE date(create_at) = :date
-            --AND payload like %:keyword%
+            AND payload like %:keyword%
 SQL;
 
         $result = $this->connection->fetchAllAssociative($sql, [

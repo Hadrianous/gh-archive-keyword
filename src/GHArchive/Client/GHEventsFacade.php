@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\GHArchive\Client;
 
-use App\Dto\GHArchiveEvents\Event;
 use App\Event\EventCRUD;
+use JsonMachine\Items;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -18,7 +18,8 @@ class GHEventsFacade
     private HttpClientInterface $httpClient;
 
     private const TEMP_PATH = '/tmp/gh/';
-    private const TEMP_FILENAME = 'archive.json.gz';
+    private const TEMP_GZIP_FILENAME = 'archive.json.gz';
+    private const TEMP_FILENAME = 'archive.json';
     private string $endpoint;
     private SerializerInterface $serializer;
     private EventCRUD $eventCRUD;
@@ -44,33 +45,41 @@ class GHEventsFacade
         return !(!is_dir($directory) && !@mkdir($directory, 0777, true) && !is_dir($directory));
     }
 
-    public function saveDailyEvents(\DateTimeImmutable $date)
+    public function saveHourlyEventsFromArchive(\DateTimeImmutable $date, int $hour): void
     {
-        $filePath = self::TEMP_PATH . self::TEMP_FILENAME;
-        for ($i = 1; $i < 2; $i++) {
-            $response = $this->getHourlyEventsFile($date, $i);
-            if ($response->getStatusCode() === Response::HTTP_OK) {
-                file_put_contents($filePath, $response->getContent());
-                $zh = gzopen($filePath, 'r');
-                while ($line = gzgets($zh)) {
-                    $this->saveEventFromJson($line);
-                }
-                gzclose($zh);
-                unlink($filePath);
-            } elseif ($response->getStatusCode() === Response::HTTP_NOT_FOUND) {
-                // If current day, maybe not all hours files are present
-                break;
-            }
+        $filePath = $this->downloadUnzippedArchive($date, $hour);
+        if ($filePath === null) {
+            return;
+        }
+        $events = Items::fromFile($filePath);
+        foreach ($events as $eventData) {
+            $this->eventCRUD->createEventFromGArchiveDTO($eventData);
         }
     }
 
-    private function saveEventFromJson($jsonData) {
-        $event = $this->serializer->deserialize($jsonData, Event::class, 'json');
-        $errors = $this->validator->validate($event);
-        if (count($errors) > 0) {
-            return;
+    public function downloadUnzippedArchive(\DateTimeImmutable $date, int $hour): ?string
+    {
+        $gzipFilePath = self::TEMP_PATH . self::TEMP_GZIP_FILENAME;
+        $filePath = self::TEMP_PATH . self::TEMP_FILENAME;
+        $response = $this->getHourlyEventsFile($date, $hour);
+        if ($response->getStatusCode() === Response::HTTP_OK) {
+            // TODO split large file in sub file to avoid memory limit
+            file_put_contents($gzipFilePath, $response->getContent());
+            $zipFile = gzopen($gzipFilePath, 'r');
+            $jsonFile = fopen($filePath, 'w');
+            fwrite($jsonFile, '[');
+            while ($line = gzgets($zipFile)) {
+                fwrite($jsonFile, $line . ',');
+            }
+            fwrite($jsonFile, ']');
+            gzclose($zipFile);
+            fclose($jsonFile);
+            unlink($gzipFilePath);
+        } elseif ($response->getStatusCode() === Response::HTTP_NOT_FOUND) {
+            // If current day, maybe not all hours files are present
+            return null;
         }
-        $this->eventCRUD->createEventFromGArchiveDTO($event);
-        unset($event);
+
+        return $filePath;
     }
 }

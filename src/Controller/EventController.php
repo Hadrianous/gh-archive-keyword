@@ -3,8 +3,9 @@
 namespace App\Controller;
 
 use App\Dto\EventInput;
+use App\Entity\Event;
 use App\Repository\ReadEventRepository;
-use App\Repository\WriteEventRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,22 +15,20 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class EventController
 {
-    private WriteEventRepository $writeEventRepository;
-    private ReadEventRepository $readEventRepository;
     private SerializerInterface $serializer;
+    private EntityManagerInterface $em;
 
     public function __construct(
-        WriteEventRepository $writeEventRepository,
+        EntityManagerInterface $em,
         ReadEventRepository $readEventRepository,
         SerializerInterface $serializer
     ) {
-        $this->writeEventRepository = $writeEventRepository;
-        $this->readEventRepository = $readEventRepository;
         $this->serializer = $serializer;
+        $this->em = $em;
     }
 
     /**
-     * @Route(path="/api/event/{id}/update", name="api_commit_update", methods={"PUT"})
+     * @Route(path="/api/event/{id}", name="api_commit_update", requirements={"id"="\d+"}), methods={"PUT"})
      */
     public function update(Request $request, int $id, ValidatorInterface $validator): Response
     {
@@ -44,7 +43,8 @@ class EventController
             );
         }
 
-        if($this->readEventRepository->exist($id) === false) {
+        /** @var Event $event */
+        if (($event = $this->em->find(Event::class, $id)) === null) {
             return new JsonResponse(
                 ['message' => sprintf('Event identified by %d not found !', $id)],
                 Response::HTTP_NOT_FOUND
@@ -52,7 +52,8 @@ class EventController
         }
 
         try {
-            $this->writeEventRepository->update($eventInput, $id);
+            $event->setComment($eventInput->comment);
+            $this->em->flush();
         } catch (\Exception $exception) {
             return new Response(null, Response::HTTP_SERVICE_UNAVAILABLE);
         }

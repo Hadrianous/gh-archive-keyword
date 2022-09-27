@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\GHArchive\Client\GHEventsFacade;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -14,7 +15,14 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ImportGitHubEventsCommand extends Command
 {
-    protected static $defaultName = 'app:import-github-events';
+    protected static $defaultName = 'app:import:github-events';
+    private GHEventsFacade $client;
+
+    public function __construct(GHEventsFacade $client)
+    {
+        parent::__construct();
+        $this->client = $client;
+    }
 
     protected function configure(): void
     {
@@ -24,9 +32,9 @@ class ImportGitHubEventsCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        // Let's rock !
-        // It's up to you now
+        $output->writeln('Yeah');
+        $this->client->saveDailyEvents(new \DateTimeImmutable());
 
-        return 1;
+        return self::SUCCESS;
     }
 }

@@ -71,5 +71,4 @@ class Actor
             $data['avatar_url']
         );
     }
-
 }

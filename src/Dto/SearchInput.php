@@ -4,13 +4,13 @@ namespace App\Dto;
 
 class SearchInput
 {
-    /**
-     * @var \DateTimeImmutable
-     */
-    public $date;
+    public \DateTimeImmutable $date;
 
-    /**
-     * @var string
-     */
-    public $keyword;
+    public string $keyword;
+
+    public function seyKeyword(string $keyword): self
+    {
+        $this->keyword = strip_tags($keyword);
+        return $this;
+    }
 }

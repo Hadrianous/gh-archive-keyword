@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Dto\EventInput;
+use App\Dto\SearchInput;
 use App\Entity\Event;
 use App\Repository\ReadEventRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -17,14 +18,55 @@ class EventController
 {
     private SerializerInterface $serializer;
     private EntityManagerInterface $em;
+    private ReadEventRepository $repository;
+    private ValidatorInterface $validator;
 
     public function __construct(
         EntityManagerInterface $em,
         ReadEventRepository $readEventRepository,
-        SerializerInterface $serializer
+        SerializerInterface $serializer,
+        ValidatorInterface $validator
     ) {
         $this->serializer = $serializer;
         $this->em = $em;
+        $this->repository = $readEventRepository;
+        $this->validator = $validator;
+    }
+
+    /**
+     * @Route(path="/api/event", name="api_search", methods={"GET"})
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $searchInput = $this->serializer->denormalize($request->query->all(), SearchInput::class);
+
+        $errors = $this->validator->validate($searchInput);
+
+        if (count($errors) > 0) {
+            $message = '';
+            foreach ($errors as $error) {
+                // TODO better error display
+                $message .= (string)$error;
+            }
+            return new JsonResponse($message, Response::HTTP_BAD_REQUEST);
+        }
+
+        $countByType = $this->repository->countByType($searchInput);
+
+        $data = [
+            'meta' => [
+                'totalEvents' => $this->repository->countAll($searchInput),
+                'totalPullRequests' => $countByType['pullRequest'] ?? 0,
+                'totalCommits' => $countByType['commit'] ?? 0,
+                'totalComments' => $countByType['comment'] ?? 0,
+            ],
+            'data' => [
+                'events' => $this->repository->getLatest($searchInput),
+                'stats' => $this->repository->statsByTypePerHour($searchInput)
+            ]
+        ];
+
+        return new JsonResponse($data);
     }
 
     /**

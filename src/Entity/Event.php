@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Webmozart\Assert\Assert;
+use App\Repository\EventRepository;
 
 /**
- * @ORM\Entity()
+ * @ORM\Entity(repositoryClass=EventRepository::class)
  * @ORM\Table(name="`event`",
  *    indexes={@ORM\Index(name="IDX_EVENT_TYPE", columns={"type"})}
  * )
@@ -108,5 +108,11 @@ class Event
     public function getComment(): ?string
     {
         return $this->comment;
+    }
+
+    public function setComment(?string $comment): self
+    {
+        $this->comment = $comment;
+        return $this;
     }
 }

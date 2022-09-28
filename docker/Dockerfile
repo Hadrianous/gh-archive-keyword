@@ -2,7 +2,9 @@ FROM php:7.4-fpm-alpine3.13
 
 # Install composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-COPY --from=symfonycorp/cli /symfony /usr/bin/symfony
+RUN apk add --no-cache bash && \
+    curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.alpine.sh' | bash && \
+    apk add symfony-cli
 
 # Creating docker user
 RUN addgroup -g 1000 docker && \

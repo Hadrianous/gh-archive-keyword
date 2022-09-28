@@ -55,7 +55,7 @@ SQL;
             GROUP BY TYPE, EXTRACT(hour from create_at)
 SQL;
 
-        $stats = $this->connection->fetchAllKeyValue($sql, [
+        $stats = $this->connection->fetchAllAssociative($sql, [
             'date' => $searchInput->date->format('Y-m-d H:i:s'),
             'keyword' => '%' . $searchInput->keyword . '%',
         ]);
@@ -72,7 +72,7 @@ SQL;
     public function getLatest(SearchInput $searchInput): array
     {
         $sql = <<<SQL
-            SELECT type, repo.name
+            SELECT type, repo.*
             FROM event
             JOIN repo on event.repo_id = repo.id
             WHERE date(create_at) = :date
@@ -83,12 +83,6 @@ SQL;
             'date' => $searchInput->date->format('Y-m-d H:i:s'),
             'keyword' => '%' . $searchInput->keyword . '%',
         ]);
-
-        $result = array_map(static function($item) {
-            $item['repo'] = json_decode($item['repo'], true);
-
-            return $item;
-        }, $result);
 
         return $result;
     }

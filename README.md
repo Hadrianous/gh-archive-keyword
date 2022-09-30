@@ -17,7 +17,7 @@ It uses [GH Archive](https://www.gharchive.org/) as its single source of truth. 
 GitHub events will be imported by a Symfony command. Your goal is to fulfill this command in order to import GitHub events in our database. This command can be found here:
 
 ```
-App\Command\ImportGitHubEventsCommand
+App\Command\Import\ImportGitHubEventsCommand
 ```
 
 API contract and entities are already done. But feel free to adapt the code as you like.
